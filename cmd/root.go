@@ -13,7 +13,7 @@ var cfgFile string
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "nexuscli",
+	Use:   "nexus-cli",
 	Short: "Calls Nexus REST API from the commandline.",
 	Long:  `Search and Download artifacts from Nexus.`,
 }

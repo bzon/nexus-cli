@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/fatih/color"
 )
@@ -51,10 +52,21 @@ func checkErr(err error) {
 	color.Unset()
 }
 
+func setRepository(n *ArtifactRequest) {
+	if matched, _ := regexp.MatchString(".+-SNAPSHOT", n.Version); matched {
+		n.RepositoryID = "snapshots"
+	} else {
+		n.RepositoryID = "releases"
+	}
+}
+
 // NewNexusQuery adds the required request Body parameters to the Query and then executes it
 func NewNexusQuery(req *http.Request, n ArtifactRequest) *http.Response {
 	req.SetBasicAuth(n.Username, n.Password)
 	q := req.URL.Query()
+	if n.RepositoryID == "" {
+		setRepository(&n)
+	}
 	q.Add("r", n.RepositoryID)
 	q.Add("g", n.GroupID)
 	q.Add("v", n.Version)
@@ -75,13 +87,20 @@ func NewNexusQuery(req *http.Request, n ArtifactRequest) *http.Response {
 }
 
 // DownloadArtifact downloads artifacts from Nexus and validates it
-func DownloadArtifact(n ArtifactRequest) error {
-	filePath := n.DestinationDir + "/" + n.Artifact + "-" + n.Version + "." + n.Packaging
-	fmt.Printf("Downloading file %s:%s:%s:%s\n", n.GroupID, n.Artifact, n.Version, n.Packaging)
-	req, err := http.NewRequest("GET", n.HostURL+MavenRedirectPath, nil)
+func DownloadArtifact(aRequest ArtifactRequest) error {
+	// Resolve and validate the artifact to download
+	aResolution, err := GetArtifactResolution(aRequest)
+	checkErr(err)
+	data := aResolution.Data
+
+	filePath := aRequest.DestinationDir + "/" + data.ArtifactID + "-" + data.Version + "." + data.Extension
+
+	// Download the resolved artifact
+	fmt.Printf("Downloading file %s:%s:%s:%s\n", data.GroupID, data.ArtifactID, data.Version, data.Extension)
+	req, err := http.NewRequest("GET", aRequest.HostURL+MavenRedirectPath, nil)
 	req.Header.Add("Accept", "application/xml")
 	checkErr(err)
-	resp := NewNexusQuery(req, n)
+	resp := NewNexusQuery(req, aRequest)
 	defer resp.Body.Close()
 
 	// Create the file
@@ -90,15 +109,14 @@ func DownloadArtifact(n ArtifactRequest) error {
 	io.Copy(out, resp.Body)
 
 	// Compare remote and local file sha1
-	remoteSHA1, _ := GetRemoteSHA1(n)
+	remoteSHA1 := data.Sha1
 	fmt.Println("Got remote sha1:", remoteSHA1)
 	f, err := os.Open(filePath)
 	checkErr(err)
 	defer f.Close()
 	h := sha1.New()
-	b, err := io.Copy(h, f)
+	_, err = io.Copy(h, f)
 	checkErr(err)
-	fmt.Printf("%d bytes downloaded\n", b)
 	hashInBytes := h.Sum(nil)
 	localSHA1 := hex.EncodeToString(hashInBytes)
 	fmt.Printf("Got downloaded sha1: %s\n", localSHA1)
@@ -106,13 +124,14 @@ func DownloadArtifact(n ArtifactRequest) error {
 		return fmt.Errorf("Download error. There is a mismatch in sha1sum")
 	}
 	color.Set(color.FgGreen)
-	fmt.Println("Successfully validated the file! Download complete!")
+	fmt.Printf("Successfully downloaded the file %s\n", filePath)
 	color.Unset()
 	return nil
 }
 
-// GetRemoteSHA1 gets the remote sha1 of the file from Nexus
-func GetRemoteSHA1(n ArtifactRequest) (string, error) {
+// GetArtifactResolution resolves the ArtifactRequest and return the data needed for ArtifactResolution
+func GetArtifactResolution(n ArtifactRequest) (*ArtifactResolution, error) {
+	fmt.Println("Resolving the artifact to download.")
 	req, err := http.NewRequest("GET", n.HostURL+MavenResolvePath, nil)
 	req.Header.Add("Accept", "application/json")
 	checkErr(err)
@@ -122,5 +141,10 @@ func GetRemoteSHA1(n ArtifactRequest) (string, error) {
 	decodedJSON := json.NewDecoder(resp.Body)
 	err = decodedJSON.Decode(ar)
 	checkErr(err)
-	return ar.Data.Sha1, nil
+	return ar, nil
+}
+
+func (aResolve *ArtifactResolution) String() string {
+	b, _ := json.Marshal(aResolve)
+	return string(b)
 }
