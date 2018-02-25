@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/fatih/color"
 )
 
 const (
@@ -41,14 +43,16 @@ type ArtifactRequest struct {
 }
 
 func checkErr(err error) {
+	color.Set(color.FgRed)
 	if err != nil {
 		fmt.Printf("ERROR: %v\n", err)
 		os.Exit(1)
 	}
+	color.Unset()
 }
 
 // NewNexusQuery adds the required request Body parameters to the Query and then executes it
-func NewNexusQuery(req *http.Request, n ArtifactRequest) (*http.Response, error) {
+func NewNexusQuery(req *http.Request, n ArtifactRequest) *http.Response {
 	req.SetBasicAuth(n.Username, n.Password)
 	q := req.URL.Query()
 	q.Add("r", n.RepositoryID)
@@ -59,14 +63,15 @@ func NewNexusQuery(req *http.Request, n ArtifactRequest) (*http.Response, error)
 	req.URL.RawQuery = q.Encode()
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	fmt.Println("/"+resp.Request.Method, resp.Status, resp.Request.URL)
-	if err != nil {
-		return nil, err
-	}
+	checkErr(err)
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Status Error: %v, Response status %s while querying %s", err, resp.Status, req.URL.String())
+		checkErr(fmt.Errorf("Got %s while querying %s", resp.Status, req.URL.String()))
+	} else {
+		color.Set(color.FgGreen)
+		fmt.Println("/"+resp.Request.Method, resp.Status, resp.Request.URL)
+		color.Unset()
 	}
-	return resp, nil
+	return resp
 }
 
 // DownloadArtifact downloads artifacts from Nexus and validates it
@@ -76,9 +81,8 @@ func DownloadArtifact(n ArtifactRequest) error {
 	req, err := http.NewRequest("GET", n.HostURL+MavenRedirectPath, nil)
 	req.Header.Add("Accept", "application/xml")
 	checkErr(err)
-	resp, err := NewNexusQuery(req, n)
+	resp := NewNexusQuery(req, n)
 	defer resp.Body.Close()
-	checkErr(err)
 
 	// Create the file
 	out, err := os.Create(filePath)
@@ -101,7 +105,9 @@ func DownloadArtifact(n ArtifactRequest) error {
 	if remoteSHA1 != localSHA1 {
 		return fmt.Errorf("Download error. There is a mismatch in sha1sum")
 	}
+	color.Set(color.FgGreen)
 	fmt.Println("Successfully validated the file! Download complete!")
+	color.Unset()
 	return nil
 }
 
@@ -110,9 +116,8 @@ func GetRemoteSHA1(n ArtifactRequest) (string, error) {
 	req, err := http.NewRequest("GET", n.HostURL+MavenResolvePath, nil)
 	req.Header.Add("Accept", "application/json")
 	checkErr(err)
-	resp, err := NewNexusQuery(req, n)
+	resp := NewNexusQuery(req, n)
 	defer resp.Body.Close()
-	checkErr(err)
 	ar := new(ArtifactResolution)
 	decodedJSON := json.NewDecoder(resp.Body)
 	err = decodedJSON.Decode(ar)

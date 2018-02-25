@@ -1,17 +1,3 @@
-// Copyright © 2018 NAME HERE <EMAIL ADDRESS>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package cmd
 
 import (
@@ -53,14 +39,11 @@ var NexusPassword string
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Configure nexus authentication and host url via flags
-	// Get the Environment Variables by default
 	RootCmd.PersistentFlags().StringVarP(&NexusHostURL, "hostURL", "H", "", "The Nexus host url including the protocol. Defaults to Env $NEXUS_HOST.")
 	RootCmd.PersistentFlags().StringVarP(&NexusUsername, "username", "U", "", "The Nexus host url including the protocol. Defaults to Env $NEXUS_USERNAME.")
 	RootCmd.PersistentFlags().StringVarP(&NexusPassword, "password", "P", "", "The Nexus host url including the protocol. Defaults to Env $NEXUS_PASSWORD")
 
-	// I'm not sure why I still have to check if Environment variables are empty
-	// if the flags above takes environment variables by default already
+	// Lookup for the Environment variables
 	if h := os.Getenv("NEXUS_HOST"); h == "" {
 		RootCmd.MarkPersistentFlagRequired("hostURL")
 	} else {
