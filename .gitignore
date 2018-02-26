@@ -5,8 +5,9 @@
 *.dylib
 *.war
 *.jar
-nexus-cli
+nexus-cli*
 *.txt
+*.report
 
 # Test binary, build with `go test -c`
 *.test
