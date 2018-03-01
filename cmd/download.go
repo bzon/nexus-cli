@@ -40,7 +40,7 @@ nexus-cli download -H http://localhost:8087 --group com.examplegroup --artifact 
 		artifact.HostURL = NexusHostURL
 		artifact.Username = NexusUsername
 		artifact.Password = NexusPassword
-		err := nexus.DownloadArtifact(artifact)
+		_, err := nexus.DownloadArtifact(artifact)
 		if err != nil {
 			fmt.Printf("Download Error: %v", err)
 			os.Exit(1)

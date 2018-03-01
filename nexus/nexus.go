@@ -25,7 +25,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -63,7 +63,7 @@ type ArtifactRequest struct {
 	Username, Password, HostURL, RepositoryID, GroupID, Version, Artifact, Packaging, DestinationDir string
 }
 
-func checkErr(err error) {
+func handleError(err error) {
 	color.Set(color.FgRed)
 	if err != nil {
 		fmt.Printf("ERROR: %v\n", err)
@@ -72,32 +72,32 @@ func checkErr(err error) {
 	color.Unset()
 }
 
-func setRepository(n *ArtifactRequest) {
-	if matched, _ := regexp.MatchString(".+-SNAPSHOT", n.Version); matched {
-		n.RepositoryID = "snapshots"
+func setRepository(aRequest *ArtifactRequest) {
+	if matched, _ := regexp.MatchString(".+-SNAPSHOT", aRequest.Version); matched {
+		aRequest.RepositoryID = "snapshots"
 	} else {
-		n.RepositoryID = "releases"
+		aRequest.RepositoryID = "releases"
 	}
 }
 
 // NewNexusQuery adds the required request Body parameters to the Query and then executes it
 func NewNexusQuery(req *http.Request, n ArtifactRequest) *http.Response {
 	req.SetBasicAuth(n.Username, n.Password)
-	q := req.URL.Query()
+	query := req.URL.Query()
 	if n.RepositoryID == "" {
 		setRepository(&n)
 	}
-	q.Add("r", n.RepositoryID)
-	q.Add("g", n.GroupID)
-	q.Add("v", n.Version)
-	q.Add("a", n.Artifact)
-	q.Add("p", n.Packaging)
-	req.URL.RawQuery = q.Encode()
+	query.Add("r", n.RepositoryID)
+	query.Add("g", n.GroupID)
+	query.Add("v", n.Version)
+	query.Add("a", n.Artifact)
+	query.Add("p", n.Packaging)
+	req.URL.RawQuery = query.Encode()
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	checkErr(err)
+	handleError(err)
 	if resp.StatusCode != http.StatusOK {
-		checkErr(fmt.Errorf("Got %s while querying %s", resp.Status, req.URL.String()))
+		handleError(fmt.Errorf("Got %s while querying %s", resp.Status, req.URL.String()))
 	} else {
 		color.Set(color.FgGreen)
 		fmt.Println("/"+resp.Request.Method, resp.Status, resp.Request.URL)
@@ -107,64 +107,66 @@ func NewNexusQuery(req *http.Request, n ArtifactRequest) *http.Response {
 }
 
 // DownloadArtifact downloads artifacts from Nexus and validates it
-func DownloadArtifact(aRequest ArtifactRequest) error {
+func DownloadArtifact(aRequest ArtifactRequest) (string, error) {
 	// Resolve and validate the artifact to download
 	aResolution, err := GetArtifactResolution(aRequest)
-	checkErr(err)
+	handleError(err)
 	data := aResolution.Data
 
+	// Declare the file path where to place the downloaded bytes
 	filePath := aRequest.DestinationDir + "/" + data.ArtifactID + "-" + data.Version + "." + data.Extension
 
 	// Download the resolved artifact
 	fmt.Printf("Downloading file %s:%s:%s:%s\n", data.GroupID, data.ArtifactID, data.Version, data.Extension)
 	req, err := http.NewRequest("GET", aRequest.HostURL+MavenRedirectPath, nil)
 	req.Header.Add("Accept", "application/xml")
-	checkErr(err)
+	handleError(err)
 	resp := NewNexusQuery(req, aRequest)
 	defer resp.Body.Close()
 
 	// Create the file
-	out, err := os.Create(filePath)
-	checkErr(err)
-	io.Copy(out, resp.Body)
+	downloadedBytes, err := ioutil.ReadAll(resp.Body)
+	handleError(err)
+	cwd, _ := os.Getwd()
+	fmt.Println(cwd)
+	err = ioutil.WriteFile(filePath, downloadedBytes, 0644)
+	handleError(err)
 
-	// Compare remote and local file sha1
+	// Get Remote file metadata SHA1
 	remoteSHA1 := data.Sha1
 	fmt.Println("Got remote sha1:", remoteSHA1)
-	f, err := os.Open(filePath)
-	checkErr(err)
-	defer f.Close()
-	h := sha1.New()
-	_, err = io.Copy(h, f)
-	checkErr(err)
-	hashInBytes := h.Sum(nil)
+
+	// Get Local downloaded file SHA1
+	b, err := ioutil.ReadFile(filePath)
+	hash := sha1.New()
+	_, err = hash.Write(b)
+	hashInBytes := hash.Sum(nil)
 	localSHA1 := hex.EncodeToString(hashInBytes)
 	fmt.Printf("Got downloaded sha1: %s\n", localSHA1)
+
+	// Compare SHA1s and return and error if it didn't match
 	if remoteSHA1 != localSHA1 {
-		return fmt.Errorf("Download error. There is a mismatch in sha1sum")
+		return "", fmt.Errorf("Download error. There is a mismatch in sha1sum")
 	}
+
+	// Print a successful message!
 	color.Set(color.FgGreen)
 	fmt.Printf("Successfully downloaded the file %s\n", filePath)
 	color.Unset()
-	return nil
+	return filePath, nil
 }
 
 // GetArtifactResolution resolves the ArtifactRequest and return the data needed for ArtifactResolution
-func GetArtifactResolution(n ArtifactRequest) (*ArtifactResolution, error) {
+func GetArtifactResolution(aRequest ArtifactRequest) (*ArtifactResolution, error) {
 	fmt.Println("Resolving the artifact to download.")
-	req, err := http.NewRequest("GET", n.HostURL+MavenResolvePath, nil)
+	req, err := http.NewRequest("GET", aRequest.HostURL+MavenResolvePath, nil)
 	req.Header.Add("Accept", "application/json")
-	checkErr(err)
-	resp := NewNexusQuery(req, n)
+	handleError(err)
+	resp := NewNexusQuery(req, aRequest)
 	defer resp.Body.Close()
-	ar := new(ArtifactResolution)
+	aResolution := new(ArtifactResolution)
 	decodedJSON := json.NewDecoder(resp.Body)
-	err = decodedJSON.Decode(ar)
-	checkErr(err)
-	return ar, nil
-}
-
-func (aResolve *ArtifactResolution) String() string {
-	b, _ := json.Marshal(aResolve)
-	return string(b)
+	err = decodedJSON.Decode(aResolution)
+	handleError(err)
+	return aResolution, nil
 }
