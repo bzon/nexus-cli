@@ -54,6 +54,12 @@ fmt:
 	go fmt $$(go list ./... | grep -v /vendor/) ; \
 	cd - >/dev/null
 
+
+test:
+	cd ${BUILD_DIR}/nexus; \
+	go test; \
+	cd - >/dev/null
+
 clean:
 	-rm -f ${TEST_REPORT}
 	-rm -f ${VET_REPORT}
