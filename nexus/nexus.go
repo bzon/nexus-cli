@@ -81,18 +81,25 @@ func setRepository(aRequest *ArtifactRequest) {
 }
 
 // NewNexusQuery adds the required request Body parameters to the Query and then executes it
-func NewNexusQuery(req *http.Request, n ArtifactRequest) *http.Response {
-	req.SetBasicAuth(n.Username, n.Password)
-	query := req.URL.Query()
-	if n.RepositoryID == "" {
-		setRepository(&n)
+func NewNexusQuery(req *http.Request, aRequest ArtifactRequest) *http.Response {
+	// Set Authentication
+	req.SetBasicAuth(aRequest.Username, aRequest.Password)
+
+	// Set the Repository to use
+	if aRequest.RepositoryID == "" {
+		setRepository(&aRequest)
 	}
-	query.Add("r", n.RepositoryID)
-	query.Add("g", n.GroupID)
-	query.Add("v", n.Version)
-	query.Add("a", n.Artifact)
-	query.Add("p", n.Packaging)
+
+	// Add the required parameters to the query
+	query := req.URL.Query()
+	query.Add("r", aRequest.RepositoryID)
+	query.Add("g", aRequest.GroupID)
+	query.Add("v", aRequest.Version)
+	query.Add("a", aRequest.Artifact)
+	query.Add("p", aRequest.Packaging)
 	req.URL.RawQuery = query.Encode()
+
+	// Execute the request
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	handleError(err)
@@ -103,6 +110,7 @@ func NewNexusQuery(req *http.Request, n ArtifactRequest) *http.Response {
 		fmt.Println("/"+resp.Request.Method, resp.Status, resp.Request.URL)
 		color.Unset()
 	}
+
 	return resp
 }
 

@@ -19,6 +19,8 @@ LDFLAGS = -ldflags "-X main.VERSION=${VERSION} -X main.COMMIT=${COMMIT} -X main.
 # Build the project
 all: link clean test vet linux darwin windows
 
+all_os: linux darwin windows
+
 link:
 	BUILD_DIR=${BUILD_DIR}; \
 	BUILD_DIR_LINK=${BUILD_DIR_LINK}; \
