@@ -6,7 +6,7 @@ For the sake of learning Go.
 
 ## Installation
 
-Download the latest [release](https://github.com/bzon/nexus-cli/releases) to anywhere. Rename it as `nexus-cli` or for Windows, `nexus-cli.exe`.
+Download the latest [release](https://github.com/bzon/nexus-cli/releases) to any directory in your system. Rename it as `nexus-cli` or for Windows, `nexus-cli.exe`.
 
 Run it as `nexus-cli --help` or `nexus-cli.exe --help`.
 
@@ -28,7 +28,7 @@ Using `download` subcommand.
 nexus-cli download -g com.example -a artifactA -p jar -v 1.0.1 -H http://localhost:8081/nexus -U admin -P admin123
 ```
 
-### Downloading Multiple Artfacts
+### Downloading Multiple Artifacts
 
 Using `multi-download` subcommand.
 
@@ -45,3 +45,7 @@ Then execute as:
 ```bash
 nexus-cli multi-download -f artifacts.txt -h http://localhost:8081/nexus -U admin -P admin123
 ```
+
+### Uploading an Artifact
+
+WIP
