@@ -4,6 +4,12 @@
 
 For the sake of learning Go.
 
+## Building
+
+```bash
+make all_os
+```
+
 ## Installation
 
 Download the latest [release](https://github.com/bzon/nexus-cli/releases) to any directory in your system. Rename it as `nexus-cli` or for Windows, `nexus-cli.exe`.

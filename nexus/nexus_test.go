@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-var aRequest = ArtifactRequest{"admin", "admin123", "http://localhost:8087/nexus", "releases", "com.aramco", "1.0.3", "AramcoTheme", "war", "."}
+var aRequest = ArtifactRequest{"admin", "admin123", "http://localhost:8081/nexus", "releases", "com.example", "LATEST", "artifactA", "jar", "."}
 
 func TestDownload(t *testing.T) {
 	f, err := DownloadArtifact(aRequest)
