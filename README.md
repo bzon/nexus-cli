@@ -1,9 +1,5 @@
 # Nexus CLI
 
-## Why?
-
-For the sake of learning Go.
-
 ## Building
 
 ```bash

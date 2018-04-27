@@ -26,7 +26,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bzon/nexus-cli/nexus"
+	"github.com/bzon/nexus-cli/nexus2"
 
 	"github.com/spf13/cobra"
 )
@@ -52,7 +52,7 @@ com.baz.group:foo:1.0.0:jar
 			os.Exit(1)
 		}
 		artifacts := strings.Split(string(b), "\n")
-		var aRequest nexus.ArtifactRequest
+		var aRequest nexus2.ArtifactRequest
 		aRequest.HostURL = NexusHostURL
 		aRequest.Username = NexusUsername
 		aRequest.Password = NexusPassword
@@ -65,7 +65,7 @@ com.baz.group:foo:1.0.0:jar
 				aRequest.Artifact = strings.Split(a, ":")[1]
 				aRequest.Version = strings.Split(a, ":")[2]
 				aRequest.Packaging = strings.Split(a, ":")[3]
-				nexus.DownloadArtifact(aRequest)
+				nexus2.DownloadArtifact(aRequest)
 			}
 		}
 	},

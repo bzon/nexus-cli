@@ -1,4 +1,4 @@
-package nexus
+package nexus2
 
 import (
 	"fmt"

@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bzon/nexus-cli/nexus"
+	"github.com/bzon/nexus-cli/nexus2"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +40,7 @@ nexus-cli download -H http://localhost:8087 --group com.examplegroup --artifact 
 		artifact.HostURL = NexusHostURL
 		artifact.Username = NexusUsername
 		artifact.Password = NexusPassword
-		_, err := nexus.DownloadArtifact(artifact)
+		_, err := nexus2.DownloadArtifact(artifact)
 		if err != nil {
 			fmt.Printf("Download Error: %v", err)
 			os.Exit(1)
@@ -48,7 +48,7 @@ nexus-cli download -H http://localhost:8087 --group com.examplegroup --artifact 
 	},
 }
 
-var artifact nexus.ArtifactRequest
+var artifact nexus2.ArtifactRequest
 
 func init() {
 	RootCmd.AddCommand(downloadCmd)
